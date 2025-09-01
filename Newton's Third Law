@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Newton's Third Law Ball Goal Game with Cube</title>
+<style>
+  body { margin: 0; overflow: hidden; font-family: sans-serif; }
+  canvas { display: block; }
+  #score {
+    position: absolute;
+    top: 10px; left: 10px;
+    font-size: 20px;
+    color: white;
+    background: rgba(0,0,0,0.5);
+    padding: 5px 10px;
+    border-radius: 8px;
+  }
+  #popup {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0,0,0,0.85);
+    color: #fff;
+    padding: 20px 30px;
+    border-radius: 10px;
+    max-width: 400px;
+    text-align: center;
+    display: none;
+    z-index: 10;
+  }
+  #popup button {
+    margin-top: 15px;
+    padding: 8px 15px;
+    cursor: pointer;
+    border: none;
+    border-radius: 5px;
+    background-color: #00ccff;
+    color: #000;
+    font-weight: bold;
+  }
+</style>
+</head>
+<body>
+<div id="score">Score: 0</div>
+<div id="popup">
+  <div id="popup-text"></div>
+  <button id="popup-btn">OK</button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
+<script>
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+let renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+// Popup system
+const popup = document.getElementById("popup");
+const popupText = document.getElementById("popup-text");
+const popupBtn = document.getElementById("popup-btn");
+function showPopup(message) { popupText.innerHTML = message; popup.style.display = "block"; }
+function hidePopup() { popup.style.display = "none"; }
+
+// Show initial dragging rules
+showPopup(`
+  <b>How to Play:</b><br>
+  1. Click and drag the ball backward.<br>
+  2. Release to shoot the ball toward the cube.<br>
+  3. Observe the trajectory line and action line.<br>
+  <i>Try to hit the cube!</i>
+`);
+popupBtn.onclick = hidePopup;
+
+// Lighting
+const light = new THREE.DirectionalLight(0xffffff, 1);
+light.position.set(5,10,5).normalize();
+scene.add(light);
+
+// Ball
+let ballGeom = new THREE.SphereGeometry(0.3,32,32);
+let ballMat = new THREE.MeshStandardMaterial({color:0xff0000});
+let ball = new THREE.Mesh(ballGeom, ballMat);
+scene.add(ball);
+ball.position.set(-6,0.3,0);
+
+// Ground
+let groundGeom = new THREE.PlaneGeometry(20,5);
+let groundMat = new THREE.MeshStandardMaterial({color:0x228B22});
+let ground = new THREE.Mesh(groundGeom, groundMat);
+ground.rotation.x = -Math.PI/2;
+ground.position.y = 0;
+scene.add(ground);
+
+// Cube goal
+let goalGeom = new THREE.BoxGeometry(1,1.5,1);
+let goalMat = new THREE.MeshStandardMaterial({color:0xffff00, transparent:true, opacity:0.6});
+let goal = new THREE.Mesh(goalGeom, goalMat);
+goal.position.set(6,0.75,0);
+scene.add(goal);
+
+// Camera side view
+camera.position.set(0,3,10);
+camera.lookAt(0,0,0);
+
+// Drag variables
+let isDragging=false;
+let startDrag=new THREE.Vector2();
+let endDrag=new THREE.Vector2();
+let velocity=new THREE.Vector3(0,0,0);
+let targetVelocity=new THREE.Vector3(0,0,0);
+let score=0;
+
+function updateScore(){document.getElementById("score").innerText="Score: "+score;}
+
+// Trajectory line
+let trajMat = new THREE.LineBasicMaterial({color:0x00ffff});
+let trajGeom = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(),new THREE.Vector3()]);
+let trajectoryLine = new THREE.Line(trajGeom,trajMat);
+trajectoryLine.visible=false;
+scene.add(trajectoryLine);
+
+// Action line (drag backward)
+let actMat = new THREE.LineBasicMaterial({color:0xffff00});
+let actGeom = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(),new THREE.Vector3()]);
+let actionLine = new THREE.Line(actGeom,actMat);
+actionLine.visible=false;
+scene.add(actionLine);
+
+function updateTrajectoryPreview(dragVec){
+  let v = new THREE.Vector3(dragVec.x*0.006, dragVec.y*0.01,0);
+  let points=[];
+  let tempPos = ball.position.clone();
+  let tempVel = v.clone();
+  for(let i=0;i<30;i++){
+    points.push(tempPos.clone());
+    tempPos=tempPos.clone().add(tempVel);
+    tempVel.y -= 0.003;
+    tempVel.multiplyScalar(0.985);
+  }
+  trajectoryLine.geometry.setFromPoints(points);
+  trajectoryLine.visible=true;
+}
+
+function updateActionLine(dragVec){
+  let start = ball.position.clone();
+  let end = start.clone().add(new THREE.Vector3(-dragVec.x*0.006,-dragVec.y*0.01,0));
+  actionLine.geometry.setFromPoints([start,end]);
+  actionLine.visible=true;
+}
+
+// Mouse events
+window.addEventListener("mousedown",(e)=>{isDragging=true; startDrag.set(e.clientX,e.clientY);});
+window.addEventListener("mousemove",(e)=>{
+  if(isDragging){
+    endDrag.set(e.clientX,e.clientY);
+    let dragVec = new THREE.Vector2().subVectors(startDrag,endDrag);
+    updateTrajectoryPreview(dragVec);
+    updateActionLine(dragVec);
+  }
+});
+window.addEventListener("mouseup",(e)=>{
+  if(isDragging){
+    endDrag.set(e.clientX,e.clientY);
+    let dragVec = new THREE.Vector2().subVectors(startDrag,endDrag);
+    targetVelocity.set(dragVec.x*0.006,dragVec.y*0.01,0);
+    trajectoryLine.visible=false;
+    actionLine.visible=false;
+    isDragging=false;
+  }
+});
+
+function resetBall(){
+  ball.position.set(-6,0.3,0);
+  velocity.set(0,0,0);
+  targetVelocity.set(0,0,0);
+}
+
+function animate(){
+  requestAnimationFrame(animate);
+  velocity.lerp(targetVelocity,0.1);
+  velocity.y -= 0.003;
+  ball.position.add(velocity);
+  velocity.multiplyScalar(0.985);
+
+  // Floor
+  if(ball.position.y<0.3){ball.position.y=0.3; velocity.y=-velocity.y*0.5;}
+
+  // Cube collision
+  let dx = Math.abs(ball.position.x - goal.position.x);
+  let dy = Math.abs(ball.position.y - goal.position.y);
+  let dz = Math.abs(ball.position.z - goal.position.z);
+
+  if(dx<0.5 && dy<0.75 && dz<0.5){
+    // Hit cube → score
+    score++;
+    updateScore();
+    resetBall();
+    showPopup(`
+      <b>Newton's Third Law:</b><br>
+      For every action, there is an equal and opposite reaction.<br>
+      You pushed the ball, and it reacted by moving toward the cube!
+    `);
+  }
+
+  // Reset if out of bounds
+  if(ball.position.x>12 || ball.position.y>8 || ball.position.x<-12) resetBall();
+
+  renderer.render(scene,camera);
+}
+
+animate();
+</script>
+</body>
+</html>
