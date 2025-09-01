@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Pool Style Game</title>
+  <style>
+    body { margin: 0; background: #2e7d32; }
+    canvas { display: block; margin: auto; background: #1b5e20; }
+    #message {
+      position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+      font-family: Arial; font-size: 20px; color: white;
+    }
+
+    /* Popup styling */
+    .popup {
+      position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      background: rgba(0,0,0,0.9); color: white; padding: 20px; 
+      border-radius: 10px; text-align: center; width: 60%;
+      display: none; z-index: 10; font-family: Arial;
+    }
+    .popup h2 { margin-top: 0; }
+    .popup button {
+      margin-top: 15px; padding: 10px 20px; border: none; 
+      background: gold; color: black; font-size: 16px; 
+      cursor: pointer; border-radius: 5px;
+    }
+
+    /* Restart Button */
+    #restartBtn {
+      position: absolute; top: 50px; right: 20px;
+      padding: 10px 20px; background: gold; border: none;
+      border-radius: 8px; font-size: 16px; font-weight: bold;
+      cursor: pointer; display: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="message">Click & Drag White Ball to Shoot</div>
+  <canvas id="gameCanvas" width="800" height="400"></canvas>
+  <button id="restartBtn" onclick="restartGame()">🔄 Restart</button>
+
+  <!-- Start Rules Popup -->
+  <div id="startPopup" class="popup">
+    <h2>🎱 Pool Game Rules</h2>
+    <p>1. Click and drag the <b>white ball</b> backward to aim.<br>
+       2. Release the mouse to shoot.<br>
+       3. Your goal is to hit the <b>red ball</b> into the <b>gold circle</b>.<br>
+       4. If you miss, it's <b>Game Over</b>!</p>
+    <button onclick="startGame()">Start Game</button>
+  </div>
+
+  <!-- Win Popup -->
+  <div id="endPopup" class="popup">
+    <h2>🎉 Congratulations!</h2>
+    <p>You scored a goal!</p>
+    <p><b>Physics Behind Collision:</b><br>
+       When the white cue ball hits the red ball, momentum and energy are transferred.<br>
+       This is called an <b>elastic collision</b>. The red ball moves in the direction of the impact,<br>
+       while the cue ball bounces back slightly.</p>
+    <button onclick="restartGame()">Play Again</button>
+  </div>
+
+  <!-- Game Over Popup -->
+  <div id="gameOverPopup" class="popup">
+    <h2>💀 Game Over!</h2>
+    <p>You missed the goal. Better luck next time!</p>
+    <button onclick="restartGame()">Try Again</button>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    let cueBall, redBall, goal;
+    let dragging = false;
+    let dragStart = null;
+    let gameRunning = false;
+    let goalScored = false;
+    let shotTaken = false;
+    let messageDiv = document.getElementById("message");
+    const restartBtn = document.getElementById("restartBtn");
+
+    // Initialize positions
+    function resetPositions() {
+      cueBall = { x: 150, y: 200, radius: 15, color: "white", vx: 0, vy: 0 };
+      redBall = { x: 400, y: 200, radius: 15, color: "red", vx: 0, vy: 0 };
+      goal = { x: 700, y: 200, radius: 30, color: "gold" };
+      goalScored = false;
+      shotTaken = false;
+      messageDiv.innerText = "Click & Drag White Ball to Shoot";
+    }
+
+    function drawBall(ball) {
+      ctx.beginPath();
+      ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+      ctx.fillStyle = ball.color;
+      ctx.fill();
+      ctx.closePath();
+    }
+
+    function drawGoal() {
+      ctx.beginPath();
+      ctx.arc(goal.x, goal.y, goal.radius, 0, Math.PI * 2);
+      ctx.fillStyle = goal.color;
+      ctx.fill();
+      ctx.closePath();
+    }
+
+    function update() {
+      if (!gameRunning) return;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      cueBall.x += cueBall.vx;
+      cueBall.y += cueBall.vy;
+      redBall.x += redBall.vx;
+      redBall.y += redBall.vy;
+
+      cueBall.vx *= 0.98;
+      cueBall.vy *= 0.98;
+      redBall.vx *= 0.98;
+      redBall.vy *= 0.98;
+
+      // Collision detection
+      const dx = redBall.x - cueBall.x;
+      const dy = redBall.y - cueBall.y;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+
+      if (dist < cueBall.radius + redBall.radius) {
+        let angle = Math.atan2(dy, dx);
+        let speed = Math.sqrt(cueBall.vx*cueBall.vx + cueBall.vy*cueBall.vy);
+        redBall.vx = speed * Math.cos(angle);
+        redBall.vy = speed * Math.sin(angle);
+        cueBall.vx *= -0.3;
+        cueBall.vy *= -0.3;
+      }
+
+      // Goal check
+      const gdx = redBall.x - goal.x;
+      const gdy = redBall.y - goal.y;
+      if (!goalScored && Math.sqrt(gdx*gdx + gdy*gdy) < goal.radius) {
+        messageDiv.innerText = "🎉 Goal! You scored!";
+        redBall.vx = redBall.vy = 0;
+        cueBall.vx = cueBall.vy = 0;
+        goalScored = true;
+        restartBtn.style.display = "block"; 
+        setTimeout(() => {
+          document.getElementById("endPopup").style.display = "block";
+        }, 500);
+      }
+
+      // Game Over check (after shot taken and balls stop moving)
+      if (shotTaken && !goalScored) {
+        if (Math.abs(cueBall.vx) < 0.1 && Math.abs(cueBall.vy) < 0.1 &&
+            Math.abs(redBall.vx) < 0.1 && Math.abs(redBall.vy) < 0.1) {
+          gameRunning = false;
+          restartBtn.style.display = "block";
+          setTimeout(() => {
+            document.getElementById("gameOverPopup").style.display = "block";
+          }, 500);
+        }
+      }
+
+      drawGoal();
+      drawBall(redBall);
+      drawBall(cueBall);
+
+      if (dragging && dragStart) {
+        ctx.beginPath();
+        ctx.moveTo(cueBall.x, cueBall.y);
+        ctx.lineTo(dragStart.x, dragStart.y);
+        ctx.strokeStyle = "white";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.closePath();
+      }
+
+      requestAnimationFrame(update);
+    }
+
+    // Mouse controls
+    canvas.addEventListener("mousedown", e => {
+      if (!gameRunning) return;
+      const dx = e.offsetX - cueBall.x;
+      const dy = e.offsetY - cueBall.y;
+      if (Math.sqrt(dx*dx + dy*dy) <= cueBall.radius) {
+        dragging = true;
+        dragStart = { x: e.offsetX, y: e.offsetY };
+      }
+    });
+
+    canvas.addEventListener("mousemove", e => {
+      if (dragging) dragStart = { x: e.offsetX, y: e.offsetY };
+    });
+
+    canvas.addEventListener("mouseup", e => {
+      if (dragging) {
+        const dx = cueBall.x - e.offsetX;
+        const dy = cueBall.y - e.offsetY;
+        cueBall.vx = dx * 0.2;
+        cueBall.vy = dy * 0.2;
+        shotTaken = true;
+      }
+      dragging = false;
+    });
+
+    // Popup control
+    function startGame() {
+      document.getElementById("startPopup").style.display = "none";
+      gameRunning = true;
+      resetPositions();
+      update();
+    }
+
+    function restartGame() {
+      document.getElementById("endPopup").style.display = "none";
+      document.getElementById("gameOverPopup").style.display = "none";
+      restartBtn.style.display = "none";
+      resetPositions();
+      gameRunning = true;
+      update();
+    }
+
+    // Show rules popup on load
+    window.onload = () => {
+      document.getElementById("startPopup").style.display = "block";
+      resetPositions();
+    };
+  </script>
+</body>
+</html>
