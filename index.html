@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Physics Concepts - Game Hub</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+    /* BODY */
+    body {
+      font-family: 'Press Start 2P', cursive;
+      background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      overflow: hidden;
+    }
+
+    /* CONTAINER */
+    .container {
+      background: rgba(255,255,255,0.1);
+      padding: 40px;
+      border-radius: 20px;
+      text-align: center;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 0 30px rgba(0,0,0,0.5);
+      animation: fadeIn 1.5s ease-out;
+    }
+
+    h1 {
+      color: #fff;
+      margin-bottom: 30px;
+      text-shadow: 2px 2px #000;
+      font-size: 28px;
+    }
+
+    /* CARDS CONTAINER */
+    .cards {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 20px;
+    }
+
+    /* CARD STYLE */
+    .card {
+      background: rgba(255,255,255,0.2);
+      border: 2px solid #fff;
+      border-radius: 15px;
+      width: 180px;
+      height: 100px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: #fff;
+      font-weight: bold;
+      font-size: 14px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+      position: relative;
+      overflow: hidden;
+      text-decoration: none; /* Make <a> look like card */
+    }
+
+    /* Card hover animation */
+    .card::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: rgba(255,255,255,0.1);
+      transform: rotate(45deg);
+      transition: all 0.5s ease;
+    }
+
+    .card:hover::before {
+      top: 0;
+      left: 0;
+    }
+
+    .card:hover {
+      transform: translateY(-10px) scale(1.05);
+      background: rgba(255,255,255,0.3);
+      border-color: #ffeb3b;
+      color: #ffeb3b;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    }
+
+    /* Fade in animation */
+    @keyframes fadeIn {
+      from {opacity: 0; transform: scale(0.8);}
+      to {opacity: 1; transform: scale(1);}
+    }
+
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>⚡ Physics Concepts Hub ⚡</h1>
+    <div class="cards">
+      <a href="CentripetalForce.html" class="card">Centripetal Force</a>
+      <a href="Collision.html" class="card">Collision</a>
+      <a href="Gravity&Freefall.html" class="card">Gravity & Freefall</a>
+      <a href="Newton's1.html" class="card">Newton's First Law</a>
+      <a href="Newton's2.html" class="card">Newton's Second Law</a>
+      <a href="Newton's3.html" class="card">Newton's Third Law</a>
+      <a href="Buyont.html" class="card">Buoyant Force</a>
+    </div>
+  </div>
+</body>
+</html>
