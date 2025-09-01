@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Newton's Second Law - Two Player Race</title>
+    <style>
+      body { margin: 0; overflow: hidden; }
+      #hud {
+        position: absolute;
+        top: 10px; left: 10px;
+        color: white; font-family: Arial; font-size: 16px;
+        background: rgba(0,0,0,0.5); padding: 10px; border-radius: 8px;
+      }
+      #message {
+        position: absolute;
+        top: 50%; left: 50%;
+        transform: translate(-50%, -50%);
+        color: yellow; font-family: Arial; font-size: 24px;
+        background: rgba(0,0,0,0.7); padding: 15px; border-radius: 10px;
+        display: none;
+        text-align: center;
+      }
+      #startScreen {
+        position: absolute;
+        top: 50%; left: 50%;
+        transform: translate(-50%, -50%);
+        color: white; font-family: Arial; font-size: 20px;
+        background: rgba(0,0,0,0.8); padding: 20px; border-radius: 12px;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="hud" style="display:none;">Press W (Ball) or ↑ (Box) to push!<br>R = Restart</div>
+    <div id="message"></div>
+    <div id="startScreen">
+      <h2>Newton’s Second Law Race 🚀</h2>
+      <p>F = m × a</p>
+      <p>
+        Player 1: <span style="color:#ff4444;">Ball (Mass = 1kg)</span> → Press <b>W</b><br>
+        Player 2: <span style="color:#4444ff;">Box (Mass = 5kg)</span> → Press <b>↑</b>
+      </p>
+      <p>
+        Each press is like applying a <b>force</b>.  
+        Lighter objects accelerate faster with the same push.  
+        Can you beat physics?
+      </p>
+      <p><b>Press SPACE to Start</b></p>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
+    <script>
+      // Scene setup
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+      const renderer = new THREE.WebGLRenderer();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      document.body.appendChild(renderer.domElement);
+
+      // Ground
+      const groundGeo = new THREE.PlaneGeometry(50, 20);
+      const groundMat = new THREE.MeshBasicMaterial({color: 0x333333, side: THREE.DoubleSide});
+      const ground = new THREE.Mesh(groundGeo, groundMat);
+      ground.rotation.x = Math.PI / 2;
+      scene.add(ground);
+
+      // Ball (Player 1)
+      const ballGeo = new THREE.SphereGeometry(0.5, 32, 32);
+      const ballMat = new THREE.MeshBasicMaterial({color: 0xff4444});
+      const ball = new THREE.Mesh(ballGeo, ballMat);
+      ball.position.set(-20, 0.5, -2);
+      scene.add(ball);
+
+      // Box (Player 2)
+      const boxGeo = new THREE.BoxGeometry(1, 1, 1);
+      const boxMat = new THREE.MeshBasicMaterial({color: 0x4444ff});
+      const box = new THREE.Mesh(boxGeo, boxMat);
+      box.position.set(-20, 0.5, 2);
+      scene.add(box);
+
+      // Finish line
+      const lineGeo = new THREE.PlaneGeometry(0.2, 20);
+      const lineMat = new THREE.MeshBasicMaterial({color: 0xffff00, side: THREE.DoubleSide});
+      const finishLine = new THREE.Mesh(lineGeo, lineMat);
+      finishLine.position.set(20, 0.01, 0);
+      finishLine.rotation.x = -Math.PI / 2;
+      scene.add(finishLine);
+
+      // Physics
+      let velocityBall = 0, velocityBox = 0;
+      const massBall = 1;
+      const massBox = 5;
+
+      const baseForce = 0.2; 
+      const forceBall = baseForce;                      
+      const forceBox = baseForce * (massBox / massBall); 
+
+      const friction = 0.01;
+
+      let gameOver = false;
+      let startTime = null;
+      let gameStarted = false;
+
+      const hud = document.getElementById("hud");
+      const message = document.getElementById("message");
+      const startScreen = document.getElementById("startScreen");
+
+      function applyForce(mass, velocity, force) {
+        return velocity + (force / mass);
+      }
+
+      function resetGame() {
+        velocityBall = 0; velocityBox = 0;
+        ball.position.set(-20, 0.5, -2);
+        box.position.set(-20, 0.5, 2);
+        gameOver = false;
+        message.style.display = "none";
+        startTime = null;
+      }
+
+      document.addEventListener("keydown", (event) => {
+        if (!gameStarted && event.code === "Space") {
+          gameStarted = true;
+          hud.style.display = "block";
+          startScreen.style.display = "none";
+          return;
+        }
+
+        if (!gameStarted) return;
+
+        if (gameOver) {
+          if (event.key.toLowerCase() === "r") resetGame();
+          return;
+        }
+        if (!startTime) startTime = performance.now();
+
+        // Player 1 controls Ball
+        if (event.key.toLowerCase() === "w") {
+          velocityBall = applyForce(massBall, velocityBall, forceBall);
+        }
+
+        // Player 2 controls Box
+        if (event.key === "ArrowUp") {
+          velocityBox = applyForce(massBox, velocityBox, forceBox);
+        }
+
+        if (event.key.toLowerCase() === "r") {
+          resetGame();
+        }
+      });
+
+      function checkWin() {
+        if (ball.position.x >= 20 && box.position.x >= 20) {
+          const diff = Math.abs(ball.position.x - box.position.x);
+          if (diff < 1) {
+            return {
+              text: "It’s a draw! Perfect timing and balance!",
+              law: "This shows Newton’s Second Law: both reached together because your applied forces balanced their masses (F = m × a)."
+            };
+          }
+        }
+        if (ball.position.x >= 20) {
+          return {
+            text: "Player 1 wins! The Ball raced ahead!",
+            law: "The ball is lighter, so with the same force it accelerates faster (Newton’s Second Law: F = m × a)."
+          };
+        }
+        if (box.position.x >= 20) {
+          return {
+            text: "Player 2 wins! The heavy Box powered through!",
+            law: "The box is heavier, so normally it accelerates less. But with enough force applied, it can still win (Newton’s Second Law in action)."
+          };
+        }
+        return null;
+      }
+
+      function animate() {
+        requestAnimationFrame(animate);
+
+        if (gameStarted && !gameOver) {
+          ball.position.x += velocityBall;
+          box.position.x += velocityBox;
+
+          velocityBall = Math.max(0, velocityBall - friction);
+          velocityBox = Math.max(0, velocityBox - friction);
+
+          const winner = checkWin();
+          if (winner) {
+            gameOver = true;
+            const timeTaken = ((performance.now() - startTime) / 1000).toFixed(2);
+            message.innerHTML = `<b>${winner.text}</b><br><br>${winner.law}<br><br>Time Taken: ${timeTaken}s<br>Press R to Restart`;
+            message.style.display = "block";
+          }
+        }
+
+        renderer.render(scene, camera);
+      }
+
+      camera.position.set(0, 15, 25);
+      camera.lookAt(0, 0, 0);
+
+      animate();
+    </script>
+  </body>
+</html>
